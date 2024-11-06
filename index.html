@@ -2,28 +2,353 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>在线客服系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>在线客服</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* 添加基础样式确保全屏显示 */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        .chat-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            flex: 0 0 auto;
+            padding: 10px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .chat-input {
+            flex: 0 0 auto;
+            padding: 10px;
+            position: relative;
+            background: #fff;
+        }
+
+        /* 确保弹窗在全屏模式下正确显示 */
+        .order-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* 在原有样式后添加排队相关样式 */
+        .queue-status {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .queue-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .queue-icon {
+            font-size: 24px;
+            margin-right: 15px;
+        }
+
+        .queue-text {
+            flex: 1;
+        }
+
+        .queue-text p {
+            margin: 5px 0;
+            color: #666;
+        }
+
+        .queue-progress {
+            height: 4px;
+            background-color: #e9ecef;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* 修改消息样式 */
+        .message {
+            display: flex;
+            margin: 8px;
+            align-items: flex-start;
+        }
+
+        .message .avatar {
+            width: 35px;
+            height: 35px;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+
+        .message-content {
+            padding: 8px 12px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
+            font-size: 14px;
+        }
+
+        /* 用户消息样式 */
+        .message.user .message-content {
+            background-color: #f0f0f0;
+            color: #333;
+        }
+
+        /* 客服消息样式 */
+        .message.service .message-content {
+            background-color: #007AFF;
+            color: white;
+        }
+
+        .message-time {
+            font-size: 11px;
+            margin-top: 3px;
+            text-align: right;
+        }
+
+        .message.user .message-time {
+            color: #999;
+        }
+
+        .message.service .message-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        /* 移除之前的flex-direction和其他可能影响布局的样式 */
+        .message.user {
+            flex-direction: row;
+        }
+
+        .chat-messages {
+            padding: 8px;
+            overflow-y: auto;
+            flex: 1;
+            background-color: #f5f5f5;
+        }
+
+        /* 确保聊天区域可以滚动 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 10px;
+            background-color: #f5f5f5;
+        }
+
+        /* 修改手机号码输入框样式 */
+        .phone-input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .phone-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .phone-input:focus {
+            border-color: #007AFF;
+        }
+
+        .phone-submit-btn {
+            padding: 10px 20px;
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .phone-submit-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .phone-submit-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .phone-input:disabled {
+            background-color: #f5f5f5;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+        /* 确保手机号码输入框在消息气泡中正确显示 */
+        .message.service .message-content .phone-input-container {
+            margin: 10px 0;
+            background-color: white;
+        }
+
+        /* 添加图片消息样式 */
+        .chat-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .chat-image:hover {
+            transform: scale(1.05);
+        }
+
+        /* 确保图片在消息气泡中正确显示 */
+        .message-content img {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 6px;
+            display: block;
+            margin: 4px 0;
+        }
+
+        /* 调整图片消息的背景色 */
+        .message.user .message-content img + .message-time {
+            margin-top: 8px;
+        }
+
+        /* 系统提示消息样式 */
+        .system-message {
+            text-align: center;
+            margin: 20px auto;
+            padding: 15px 30px;
+            background-color: #f5f5f5;
+            border: 2px solid;
+            border-image: linear-gradient(45deg, #ff6b6b, #4dabf7, #ffd43b) 1;
+            border-radius: 50px;
+            color: #2f5233;
+            font-size: 14px;
+            line-height: 1.5;
+            width: fit-content;
+            max-width: 80%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* 修改+号按钮样式 */
+        .icon-button.more-button {
+            background-color: #007AFF;  /* 蓝色背景 */
+            color: white;  /* 白色文字 */
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .icon-button.more-button:hover {
+            background-color: #0056b3;  /* 鼠标悬停时的深蓝色 */
+        }
+
+        /* 确保按钮在输入框左侧正确显示 */
+        .input-buttons.left {
+            display: flex;
+            align-items: center;
+        }
+    </style>
 </head>
 <body>
+    <!-- 保持原有的DOM结构不变 -->
     <div class="chat-container">
         <!-- 聊天头部 -->
         <div class="chat-header">
+            <!-- 原有的header内容 -->
             <div class="service-info">
                 <div class="avatar">
-                    <!-- 初始设置为机器人头像 -->
                     <img src="https://s1.imagehub.cc/images/2024/11/06/d7a00d349a2039159224eeac90e7f067.png" alt="客服头像" id="serviceAvatar">
                 </div>
                 <div class="info">
                     <div class="service-name">万程乐娱</div>
                     <div class="service-id">智能助理-万小程</div>
                 </div>
-                <!-- 修改工单按钮 -->
                 <button class="ticket-btn" id="ticketBtn">
                     <span class="ticket-icon">📋</span>
                     <span class="ticket-text">反馈</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- 新增：排队状态区域 -->
+        <div class="queue-status" id="queueStatus" style="display: none;">
+            <div class="queue-info">
+                <div class="queue-icon">🕒</div>
+                <div class="queue-text">
+                    <p>正在排队中，请稍候...</p>
+                    <p>当前排队人数：<span id="queueNumber">0</span>人</p>
+                    <p>预计等待时间：<span id="estimatedTime">0</span>分钟</p>
+                </div>
+            </div>
+            <div class="queue-progress">
+                <div class="progress-bar" id="queueProgress"></div>
             </div>
         </div>
 

@@ -52,15 +52,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // 添加机器人回复规则
+    // 修改机器人回复规则
     const botResponses = {
         // 常见问候语
         greetings: {
             keywords: ['你好', '在吗', '在么', 'hi', 'hello', '您好'],
             responses: [
-                '您好，我是智能助理小程，很高兴为您服务~',
                 '您好，请问有什么可以帮您的吗？',
-                '您好，我是24小时智能客服，请问有什么需要帮助的吗？'
+                '您好，很高兴为您服务~',
+                '您好，请问需要什么帮助？'
             ]
         },
         // 订单相关
@@ -68,81 +68,46 @@ document.addEventListener('DOMContentLoaded', function() {
             keywords: ['订单', '预订', '预定', '下单', '购买'],
             responses: [
                 '您可以点击左下角"+"按钮，选择"选择订单"来查看您的订单信息~',
-                '建议您先选择具体订单，这样我可以更好地为您服务哦~'
+                '请问您需要查询哪个订单呢？可以点击左下角"+"选择具体订单~'
             ]
         },
         // 转人工相关
         transfer: {
             keywords: ['人工', '客服', '转接', '转人工'],
             responses: [
-                '请您不要着急，您遇到的问题我可以随时为您处理哦~'
+                '请问您遇到了什么问题呢？我可以先帮您处理哦~'
             ]
         },
         // 投诉相关
         complaint: {
             keywords: ['投诉', '不满意', '差评', '垃圾', '退款', '举报', '骗子'],
             responses: [
-                '非常抱歉给您带来了不好的体验，智能助理现在为您转接人工客服，请稍后...'
-            ]
-        },
-        // 添加退款相关规则
-        refund: {
-            keywords: ['退款'],
-            responses: [
-                '请您稍等，我为您调取订单信息...'
+                '非常抱歉给您带来不好的体验，我马上为您转接人工客服...'
             ]
         },
         // 默认回复
         default: [
-            '抱歉，我可能没有理解您的问题。您可以换个方式描述，或者再次输入"人工"来转接人工客服~',
-            '您的问题我理解的不是很清楚，建议您可以选择订单，或者输入"转人工"来转接人工客服~'
+            '抱歉没能理解您的问题，您可以换个方式描述，或输入"人工"转接人工客服~',
+            '您的问题我可能理解的不够清楚，建议您直接输入"转人工"来联系人工客服~'
         ]
     };
 
     // 添加消息函数
     function addMessage(content, type) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-        
-        // 根据消息类型和当前服务状态选择头像
-        const avatarSrc = type === 'service' 
-            ? (serviceState.isAI ? serviceInfo.robotAvatar : serviceInfo.humanAvatar)
-            : serviceInfo.userAvatar;
-        
-        // 根据消息类型创建不同的HTML结构
-        if (type === 'user') {
-            // 用户消息：内容在前，头像在后
-            messageDiv.innerHTML = `
-                <div class="message-content">
-                    ${content}
-                    <div class="message-time">${formatTime()}</div>
-                </div>
-                <div class="avatar">
-                    <img src="${avatarSrc}" alt="用户头像">
-                </div>
-            `;
-        } else {
-            // 客服消息：头像在前，内容在后
-            messageDiv.innerHTML = `
-                <div class="avatar">
-                    <img src="${avatarSrc}" alt="客服头像">
-                </div>
-                <div class="message-content">
-                    ${content}
-                    <div class="message-time">${formatTime()}</div>
-                </div>
-            `;
-        }
-
-        chatMessages.appendChild(messageDiv);
+        const chatMessages = document.getElementById('chatMessages');
+        const messageElement = createMessageElement(content, type);
+        chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
     // 格式化时间函数
     function formatTime() {
-        return new Date().toLocaleTimeString('zh-CN', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        const now = new Date();
+        return now.toLocaleTimeString('zh-CN', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         });
     }
 
@@ -159,7 +124,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             serviceAvatar.src = serviceInfo.robotAvatar;
             serviceId.textContent = serviceInfo.robotName;
-            serviceName.textContent = '万程乐娱';
+            serviceName.textContent = '万乐娱';
         }
     }
 
@@ -179,20 +144,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 修改转人工函数，添加按钮显示控制
     function handleTransferToHuman() {
-        serviceState.isAI = false;
-        serviceState.currentAgentId = '12001';
-        updateServiceInfo(true);
-        
-        addMessage("正在为您转接人工客服，请稍候...", 'service');
-        
-        setTimeout(() => {
-            addMessage(`您好，工号：${serviceState.currentAgentId}为您服务~`, 'service');
-            // 显示结束服务按钮
+        // 启动排队系统
+        initQueueSystem(() => {
+            // 排队结束后的回调
+            serviceState.isAI = false;
+            serviceState.currentAgentId = '12001';
+            updateServiceInfo(true);
+            
+            // 创建系统提示消息
+            const messageDiv = document.createElement('div');
+            messageDiv.style.cssText = `
+                text-align: center;
+                margin: 20px auto;
+                padding: 15px 30px;
+                background-color: #f5f5f5;
+                border: 2px solid;
+                border-image: linear-gradient(45deg, #ff6b6b, #4dabf7, #ffd43b) 1;
+                border-radius: 50px;
+                color: #2f5233;
+                font-size: 14px;
+                line-height: 1.5;
+                width: fit-content;
+                max-width: 80%;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            `;
+            messageDiv.innerHTML = `您好，客服工号：${serviceState.currentAgentId}为您服务~ 😊`;
+            
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
             updateEndServiceButtonVisibility();
-        }, 1500);
+        });
     }
 
-    // 修改结束服务处理函数，添加按钮显示控制
+    // 修改结束服务处理函数
     function handleEndService() {
         if (!ratingHistory.canRate(serviceState.currentAgentId)) {
             showAlert('您已对该客服进行过评价，24小时内仅可评价一次。');
@@ -202,13 +188,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (serviceState.isAI) {
             // 机器人模式结束
-            addMessage('我是智能AI助理万小程，非谢���可，如您还有其他问题可以随时找我哟~', 'service');
+            addMessage('我是智能AI助理万小程，非常谢谢，如您还有其他问题可以随时找我哟~', 'service');
             resetServiceState();
         } else {
-            // 人工客服模式结束
-            addMessage('您已结束本次人工务如您后续遇到任何问题欢迎您随时咨询哦~', 'service');
-            
-            // 显示评分弹窗
+            // 人工客服模式结束 - 只显示评分弹窗，不发送结束消息
             showRatingModal();
         }
     }
@@ -226,44 +209,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     <p>本次服务已结束，请您对工号【${serviceState.currentAgentId}】的服务进行评价，您的评价对我们非常重要~ 😊</p>
                     
                     <div class="rating-item">
-                        <div class="rating-label">专业程度</div>
-                        <div class="rating-stars-container">
-                            <div class="rating-stars" data-type="professional">
-                                <span class="star" data-rating="1">❤</span>
-                                <span class="star" data-rating="2">❤</span>
-                                <span class="star" data-rating="3">❤</span>
-                                <span class="star" data-rating="4">❤</span>
-                                <span class="star" data-rating="5">❤</span>
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="color: #333; font-size: 14px;">服务评价：</div>
+                                <div class="rating-stars" data-type="service" style="display: inline-block;">
+                                    <span class="star" data-rating="1">❤</span>
+                                    <span class="star" data-rating="2">❤</span>
+                                    <span class="star" data-rating="3">❤</span>
+                                    <span class="star" data-rating="4">❤</span>
+                                    <span class="star" data-rating="5">❤</span>
+                                </div>
                             </div>
-                            <div class="rating-text"></div>
-                        </div>
-                    </div>
-
-                    <div class="rating-item">
-                        <div class="rating-label">服务态度</div>
-                        <div class="rating-stars-container">
-                            <div class="rating-stars" data-type="attitude">
-                                <span class="star" data-rating="1">❤</span>
-                                <span class="star" data-rating="2">❤</span>
-                                <span class="star" data-rating="3">❤</span>
-                                <span class="star" data-rating="4">❤</span>
-                                <span class="star" data-rating="5">❤</span>
-                            </div>
-                            <div class="rating-text"></div>
-                        </div>
-                    </div>
-
-                    <div class="rating-item">
-                        <div class="rating-label">响应时长</div>
-                        <div class="rating-stars-container">
-                            <div class="rating-stars" data-type="response">
-                                <span class="star" data-rating="1">❤</span>
-                                <span class="star" data-rating="2">❤</span>
-                                <span class="star" data-rating="3">❤</span>
-                                <span class="star" data-rating="4">❤</span>
-                                <span class="star" data-rating="5">❤</span>
-                            </div>
-                            <div class="rating-text"></div>
+                            <div class="rating-text" style="color: #333; font-size: 14px; margin-top: 5px;"></div>
                         </div>
                     </div>
 
@@ -278,27 +235,84 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.body.appendChild(ratingModal);
 
-        // 记录每个维度的评分
-        const ratings = {
-            professional: 0,
-            attitude: 0,
-            response: 0
-        };
+        // 记录评分
+        let rating = 0;
 
         // 添加评分事件
-        const ratingItems = ratingModal.querySelectorAll('.rating-item');
+        const stars = ratingModal.querySelectorAll('.star');
         const submitBtn = ratingModal.querySelector('.rating-submit-btn');
+        const ratingText = ratingModal.querySelector('.rating-text');
 
-        ratingItems.forEach(item => {
-            const stars = item.querySelectorAll('.star');
-            const ratingType = item.querySelector('.rating-stars').dataset.type;
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const value = parseInt(this.dataset.rating);
+                rating = value;
 
-            stars.forEach(star => {
-                star.addEventListener('click', function() {
-                    const rating = parseInt(this.dataset.rating);
-                    ratings[ratingType] = rating;
+                // 更新评分文本
+                const ratingTexts = {
+                    1: '不满意',
+                    2: '不满意',
+                    3: '一般',
+                    4: '满意',
+                    5: '非常满意'
+                };
 
-                    // 更新评分文本
+                // 更新爱心显示
+                stars.forEach(s => {
+                    if (s.dataset.rating <= value) {
+                        s.style.color = '#ff0000';
+                        s.classList.add('selected');
+                    } else {
+                        s.style.color = '#ffb3b3';
+                        s.classList.remove('selected');
+                    }
+                });
+
+                // 显示评分文本
+                const ratingText = ratingModal.querySelector('.rating-text');
+                ratingText.textContent = ratingTexts[value];
+                ratingText.style.display = 'block';
+
+                // 激活提交按钮
+                if (rating > 0) {
+                    submitBtn.classList.add('active');
+                }
+            });
+
+            // 添加悬停效果，同时更新显示的文本
+            star.addEventListener('mouseover', function() {
+                const value = parseInt(this.dataset.rating);
+                const ratingTexts = {
+                    1: '不满意',
+                    2: '不满意',
+                    3: '一般',
+                    4: '满意',
+                    5: '非常满意'
+                };
+                
+                // 更新爱心颜色
+                stars.forEach(s => {
+                    if (s.dataset.rating <= value) {
+                        s.style.color = '#ff0000';
+                    }
+                });
+
+                // 显示当前悬停的评分文本
+                const ratingText = ratingModal.querySelector('.rating-text');
+                ratingText.textContent = ratingTexts[value];
+                ratingText.style.display = 'block';
+            });
+
+            star.addEventListener('mouseout', function() {
+                stars.forEach(s => {
+                    if (!s.classList.contains('selected')) {
+                        s.style.color = '#ffb3b3';
+                    }
+                });
+
+                // 恢复已选择的评分文本，如果没有选择则隐藏文本
+                const ratingText = ratingModal.querySelector('.rating-text');
+                if (rating > 0) {
                     const ratingTexts = {
                         1: '不满意',
                         2: '不满意',
@@ -306,52 +320,16 @@ document.addEventListener('DOMContentLoaded', function() {
                         4: '满意',
                         5: '非常满意'
                     };
-
-                    // 更新爱心显示
-                    stars.forEach(s => {
-                        if (s.dataset.rating <= rating) {
-                            s.style.color = '#ff0000';
-                            s.classList.add('selected');
-                        } else {
-                            s.style.color = '#ffb3b3';
-                            s.classList.remove('selected');
-                        }
-                    });
-
-                    // 显示评分文本
-                    const ratingTextDiv = item.querySelector('.rating-text');
-                    ratingTextDiv.textContent = ratingTexts[rating];
-                    ratingTextDiv.style.display = 'inline-block';
-
-                    // 检查是否所有维度都已评分
-                    if (Object.values(ratings).every(r => r > 0)) {
-                        submitBtn.classList.add('active');
-                    }
-                });
-
-                // 添加悬停效果
-                star.addEventListener('mouseover', function() {
-                    const rating = this.dataset.rating;
-                    stars.forEach(s => {
-                        if (s.dataset.rating <= rating) {
-                            s.style.color = '#ff0000';
-                        }
-                    });
-                });
-
-                star.addEventListener('mouseout', function() {
-                    stars.forEach(s => {
-                        if (!s.classList.contains('selected')) {
-                            s.style.color = '#ffb3b3';
-                        }
-                    });
-                });
+                    ratingText.textContent = ratingTexts[rating];
+                } else {
+                    ratingText.style.display = 'none';
+                }
             });
         });
 
-        // 添加提交按钮事件
+        // 修改评分弹窗中的提交按钮事件处理
         submitBtn.addEventListener('click', function() {
-            if (Object.values(ratings).every(r => r > 0)) {
+            if (rating > 0) {
                 const feedback = ratingModal.querySelector('textarea').value;
                 
                 // 记录评分
@@ -359,10 +337,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // 关闭弹窗
                 ratingModal.remove();
+                
+                // 先显示感谢提示
                 showAlert('感谢您的评价，如您有问题可以随时联系我们处理哟~');
-                resetServiceState();
+                
+                // 发送结束服务消息
+                setTimeout(() => {
+                    addMessage('您已结束本次人工服务，如您后续遇到任何问题欢迎随时咨询哦~', 'service');
+                    resetServiceState();
+                }, 500);
             } else {
-                showAlert('请完成所有评项');
+                showAlert('请对本次服务进行评分');
             }
         });
     }
@@ -400,12 +385,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000);
     }
 
-    // 修改消息发送函，移除结束服务检测
+    // 修消发送函数
     function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
+        
         if (!message) return;
 
-        // 发送用消息
+        // 发送用户消息
         addMessage(message, 'user');
         messageInput.value = '';
 
@@ -426,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isComplaint = complaintKeywords.some(keyword => message.includes(keyword));
 
             if (isComplaint) {
-                // 如果是投诉，直接发送道歉消息并转人工
+                // 如果是投诉，直接发歉消息并人
                 setTimeout(() => {
                     addMessage('非常抱歉给您带来了不好的体验，智能助理现在为您转接人工客服，请稍后...', 'service');
                     setTimeout(() => {
@@ -434,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }, 1000);
                 }, 500);
             } else {
-                // 检查是否是转人工请求
+                // 检查否是转人工请求
                 const transferKeywords = ['转人工', '人工', '客服'];
                 const isTransferRequest = transferKeywords.some(keyword => message.includes(keyword));
 
@@ -444,6 +431,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     handleBotResponse(message);
                 }
             }
+        } else {
+            // 人工客服模式下，只发送用户消息，不需要自动回复
+            console.log('人工客服模式');
         }
     }
 
@@ -471,7 +461,7 @@ document.addEventListener('DOMContentLoaded', function() {
         transferKeywordCount = 0;
     }
 
-    // 查找匹配的回复
+    // 查找匹配的复
     function findMatchingResponse(message) {
         const lowerMessage = message.toLowerCase();
         
@@ -512,7 +502,7 @@ document.addEventListener('DOMContentLoaded', function() {
             moreMenu.classList.remove('show');
         });
 
-        // 阻止菜单内部点击事件冒泡
+        // 止菜单内部点击事件冒泡
         moreMenu.addEventListener('click', (e) => {
             e.stopPropagation();
         });
@@ -529,7 +519,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 修改订单状态转换函数
+    // 修改单状态转换函数
     function getStatusTag(status) {
         let className = '';
         let text = '';
@@ -555,7 +545,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return `<span class="status-tag ${className}">${text}</span>`;
     }
 
-    // 修改模拟订单数据，添加手机号码
+    // 修改模订单数据，添加手机号码
     const mockOrders = {
         initialOrders: [
             {
@@ -613,7 +603,7 @@ document.addEventListener('DOMContentLoaded', function() {
         ]
     };
 
-    // 修改订单项创建函数，添加手机号码显示
+    // 修改订单创建函数，添加手机号码显示
     function createOrderItem(order) {
         // 创建带星号的手机号码
         const maskedPhone = order.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
@@ -641,7 +631,7 @@ document.addEventListener('DOMContentLoaded', function() {
             orderModal.classList.remove('show');
             
             // 发送订单信息到聊天手机号码带星号
-            const orderMessage = `已选择订单：
+            const orderMessage = `已择订单：
 订单号：${order.id}
 产品：${order.name}
 价格：${order.price}元
@@ -652,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             addMessage(orderMessage, 'user');
             
-            // 触发客服响应
+            // 触发服响应
             setTimeout(() => {
                 handleOrderResponse(order);
             }, 500);
@@ -661,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return orderItem;
     }
 
-    // 修改订单选择处理函数，添加排序逻辑
+    // 修改订单选择处理函，添加排序逻辑
     function handleOrderSelection() {
         const orderModal = document.getElementById('orderModal');
         const orderList = document.getElementById('orderList');
@@ -696,7 +686,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 allOrders = [...allOrders, ...mockOrders.moreOrders];
                 const sortedAllOrders = sortOrdersByDate(allOrders);
                 
-                // 清空现有列表并重新添加所有排序后的订单
+                // 清空现有列表并重新添加所有排序的订单
                 orderList.innerHTML = '';
                 sortedAllOrders.forEach(order => {
                     const orderItem = createOrderItem(order);
@@ -768,12 +758,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return true;
         } else {
             // 号码不匹配，显示弹窗提示
-            showAlert('您输入的预订手机号码有误，请您输入正确的预订手机号码');
+            showAlert('输入的预订手机号码有误，请您输入正确的订手机号码');
             return false;
         }
     }
 
-    // 修改手机号码输入消息创建函数
+    // 修改手机号码输入消息创建函
     function createPhoneInputMessage(selectedOrder) {
         const messageDiv = document.createElement('div');
         messageDiv.className = 'message service';
@@ -817,12 +807,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             if (phoneNumber.length !== 11) {
-                showAlert('您输入的手机号码格式不正确，请重新输入11位手机号码');
+                showAlert('您输入的手机号码格式不正确，请重新输入11位手机号');
                 phoneInput.value = '';
                 return;
             }
 
-            // 验证手机号码是否匹配订单
+            // 验证手机号是否匹配订单
             if (verifyPhoneNumber(phoneNumber, selectedOrder)) {
                 // 号码匹配，禁用输入和按钮
                 phoneInput.disabled = true;
@@ -840,23 +830,93 @@ document.addEventListener('DOMContentLoaded', function() {
     // 修改订单响应处理函数
     function handleOrderResponse(order) {
         // 检查是否是退款场景且订单状态为已结束
-        if (messageInput.value.includes('退款')) {
+        const messageInputValue = document.getElementById('messageInput').value;
+        
+        if (messageInputValue.includes('退款')) {
             if (order.status === '已结束') {
-                const response = '您的订单已结束，已无法进行退款，非常抱歉给您带来了不便，还请您见谅~';
-                addMessage(response, 'service');
+                addMessage('您的订单已结束，已无法进行退款，非常抱歉给您带来了不便，还请您见谅~', 'service');
             }
-            return;  // 退款场景直接返回，不发送其他消息
+            return;
         }
 
-        // 延迟发送手机号码输入提示
-        setTimeout(() => {
-            const phoneMessage = createPhoneInputMessage(order);
-            chatMessages.appendChild(phoneMessage);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        }, 1000);
+        // 创建手机号码验证消息
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message service';
+        
+        const avatarDiv = document.createElement('div');
+        avatarDiv.className = 'avatar';
+        avatarDiv.innerHTML = `<img src="${serviceState.isAI ? serviceInfo.robotAvatar : serviceInfo.humanAvatar}" alt="客服头像">`;
+        
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        contentDiv.innerHTML = `
+            <div style="margin-bottom: 10px;">为了保障用户隐私，请您输入预订手机号码进行验证</div>
+            <div style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <div style="display: flex; gap: 10px;">
+                    <input type="tel" class="phone-input" placeholder="请输入11位手机号码" maxlength="11" pattern="[0-9]*" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button class="phone-submit-btn" style="padding: 8px 20px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer;">完成</button>
+                </div>
+            </div>
+            <div class="message-time">${formatTime()}</div>
+        `;
+
+        messageDiv.appendChild(avatarDiv);
+        messageDiv.appendChild(contentDiv);
+
+        // 添加到聊天区域
+        const chatMessages = document.getElementById('chatMessages');
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        // 获取输入框和按钮
+        const phoneInput = contentDiv.querySelector('.phone-input');
+        const submitBtn = contentDiv.querySelector('.phone-submit-btn');
+
+        // 只允许输入数字
+        phoneInput.addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+
+        // 处理提交
+        submitBtn.addEventListener('click', function() {
+            const phoneNumber = phoneInput.value;
+            
+            if (!phoneNumber) {
+                showAlert('请输入手机号码');
+                return;
+            }
+            
+            if (phoneNumber.length !== 11) {
+                showAlert('请输入正确的11位手机号码');
+                phoneInput.value = '';
+                return;
+            }
+
+            // 验证手机号码
+            if (phoneNumber === order.phone) {
+                // 验证成功
+                phoneInput.disabled = true;
+                submitBtn.disabled = true;
+                submitBtn.style.backgroundColor = '#ccc';
+                
+                // 创建带星号的手机号码
+                const maskedPhone = phoneNumber.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+                
+                // 发送手机号码到聊天框
+                addMessage(`手机号码：${maskedPhone}`, 'user');
+                
+                setTimeout(() => {
+                    addMessage('手机号码验证成功，请问有什么可以帮您？', 'service');
+                }, 500);
+            } else {
+                // 验证失败
+                showAlert('您入的预订手机号码有误，请重新输入');
+                phoneInput.value = '';
+            }
+        });
     }
 
-    // 获取时间问候语
+    // 修改获取时间问候语函数
     function getTimeGreeting() {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) {
@@ -868,11 +928,11 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (hour >= 18 && hour < 23) {
             return '晚上好';
         } else {
-            return '深夜了';
+            return '深夜好';
         }
     }
 
-    // 添加用户信息对象
+    // 加用户信息对象
     const userInfo = {
         name: "张三",
         level: "白金卡会员"
@@ -911,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     `;
 
-    // 添加反馈弹窗到 body
+    // 添反馈弹窗到 body
     document.body.appendChild(ticketModal);
 
     // 获取反馈按钮
@@ -922,20 +982,28 @@ document.addEventListener('DOMContentLoaded', function() {
         ticketBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('点击反馈按钮');
             
             // 设置当前日期和时间
             const feedbackDate = document.getElementById('feedbackDate');
             if (feedbackDate) {
                 const now = new Date();
-                // 格式化日期和时间，精确到秒
-                const dateStr = now.toLocaleDateString('zh-CN'); // 日期部分
-                const timeStr = now.toLocaleTimeString('zh-CN', { 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    second: '2-digit'
-                }); // 时间部分
-                feedbackDate.value = `${dateStr} ${timeStr}`;
+                // 格式化日期和时间，使用24小时制
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                
+                feedbackDate.value = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                
+                // 添加样式
+                feedbackDate.style.backgroundColor = '#f5f5f5';
+                feedbackDate.style.border = '1px solid #ddd';
+                feedbackDate.style.padding = '8px';
+                feedbackDate.style.borderRadius = '4px';
+                feedbackDate.style.width = '100%';
+                feedbackDate.style.boxSizing = 'border-box';
             }
             
             // 显示反馈弹窗
@@ -1009,13 +1077,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // 提交成功后关闭弹窗
+            // 提交成功后闭弹窗
             ticketModal.classList.remove('show');
             
             // 清空表单
             feedbackForm.reset();
             
-            // 显示提交成功提示
+            // 显示提成功提示
             showFeedbackAlert('感谢您的反馈，客服专员会尽快与您联系');
         });
 
@@ -1053,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 处理图片选择
+    // 修改处理图片选择的代码
     if (imageInput) {
         imageInput.addEventListener('change', function(e) {
             console.log('选择图片');
@@ -1079,18 +1147,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     const messageDiv = document.createElement('div');
                     messageDiv.className = 'message user';
                     
-                    // 创建消息容
+                    // 创建消息内
                     messageDiv.innerHTML = `
-                        <div class="message-content">
-                            <img src="${event.target.result}" alt="发的图片" class="chat-image">
-                            <div class="message-time">${formatTime()}</div>
-                        </div>
                         <div class="avatar">
                             <img src="${serviceInfo.userAvatar}" alt="用户头像">
+                        </div>
+                        <div class="message-content">
+                            <img src="${event.target.result}" alt="发送的图片" style="max-width: 200px; max-height: 200px; border-radius: 8px;">
+                            <div class="message-time">${formatTime(new Date())}</div>
                         </div>
                     `;
                     
                     // 添加到聊天区域
+                    const chatMessages = document.getElementById('chatMessages');
                     chatMessages.appendChild(messageDiv);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 };
@@ -1127,33 +1196,172 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化结束服务按钮状态
     updateEndServiceButtonVisibility();
 
-    // 修改初始欢迎消息
+    // 改初始欢迎消息
     const welcomeMessage = `尊敬的${userInfo.name}${getTimeGreeting()}，您遇到了什么问题呢？让我来为您处理吧~ 😊
 
-<div style="color: white; font-weight: bold;">💡 猜您想问：</div>
-<div style="color: white; text-align: left;">
-预订门票
-预订城市玩伴
-<span style="text-decoration: underline; cursor: pointer;" onclick="handleRefundClick()">退款问题</span>
+<div style="color: white; font-weight: bold; margin-bottom: 10px;">💡 为了给您提供更好的服务，请选择下方业务进行咨询~</div>
+<div style="color: white; text-align: left; line-height: 2.5;">
+    <div style="display: flex; justify-content: flex-start; gap: 15px; margin-bottom: 8px;">
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('comprehensive')">综合业务</span>
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('cityCompanion')">城市玩伴业务</span>
+    </div>
+    <div style="display: flex; justify-content: flex-start; gap: 15px;">
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('ticket')">门票景点业务</span>
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('gameCompanion')">游戏陪玩业务</span>
+    </div>
 </div>`;
 
     // 添加欢迎消息
     addMessage(welcomeMessage, 'service');
 
-    // 添加退款点击处理函数
-    function handleRefundClick() {
-        // 发送退款消息
-        addMessage('退款', 'user');
+    // 修改业务点击处理函数
+    function handleServiceClick(type) {
+        let serviceName = '';
+        switch(type) {
+            case 'comprehensive':
+                serviceName = '综合业务';
+                break;
+            case 'cityCompanion':
+                serviceName = '城市玩伴业务';
+                break;
+            case 'ticket':
+                serviceName = '门票景点业务';
+                break;
+            case 'gameCompanion':
+                serviceName = '游戏陪玩业务';
+                break;
+        }
         
-        // 触发退款处理流程
+        // 发送用户选择的业务类型
+        addMessage(serviceName, 'user');
+        
+        // 发送客服回复，使用用户的实际昵称
         setTimeout(() => {
-            addMessage('请您稍等，我为您调取订单信息...', 'service');
-            setTimeout(() => {
-                handleOrderSelection();
-            }, 500);
+            const response = `尊敬的${userInfo.name}您好，您是在${serviceName}遇到了什么问题吗？我可以随时帮您处理哦~ 😊`;
+            addMessage(response, 'service');
         }, 500);
     }
 
-    // 将 handleRefundClick 函数添加到全局作用域
-    window.handleRefundClick = handleRefundClick;
+    // 将处理函数添加到全局作用域
+    window.handleServiceClick = handleServiceClick;
+
+    // 格式化时间为24小时制，显示时分秒
+    function formatTime(date) {
+        return date.toLocaleTimeString('zh-CN', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
+
+    // 修改创建消息元素的函数
+    function createMessageElement(content, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        
+        const time = formatTime(new Date());
+        
+        if (type === 'user') {
+            // 用户消息：头像在左，内容在右
+            messageDiv.innerHTML = `
+                <div class="avatar">
+                    <img src="${serviceInfo.userAvatar}" alt="户头像">
+                </div>
+                <div class="message-content">
+                    ${content}
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+        } else {
+            // 客服消息：头像在左，内容在右
+            messageDiv.innerHTML = `
+                <div class="avatar">
+                    <img src="${serviceState.isAI ? serviceInfo.robotAvatar : serviceInfo.humanAvatar}" alt="客服头像">
+                </div>
+                <div class="message-content">
+                    ${content}
+                    <div class="message-time">${time}</div>
+                </div>
+            `;
+        }
+
+        return messageDiv;
+    }
+
+    // 添加消息到聊天区域
+    function addMessage(content, type) {
+        const chatMessages = document.getElementById('chatMessages');
+        const messageElement = createMessageElement(content, type);
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // 修改排队系统初始化函数
+    function initQueueSystem(callback) {
+        const queueStatus = document.getElementById('queueStatus');
+        const queueNumber = document.getElementById('queueNumber');
+        const estimatedTime = document.getElementById('estimatedTime');
+        const queueProgress = document.getElementById('queueProgress');
+        
+        // 显示排队状态
+        queueStatus.style.display = 'block';
+        
+        // 随机生成1-10人的排队人数
+        const totalPeople = Math.floor(Math.random() * 10) + 1;
+        let currentPosition = totalPeople;
+        
+        // 更新排队信息
+        queueNumber.textContent = currentPosition;
+        estimatedTime.textContent = Math.ceil(currentPosition * 0.5);
+        
+        // 发送排队提示消息
+        addMessage('正在为您转接人工客服，请稍候...', 'service');
+        
+        // 启动排队倒计时
+        const queueInterval = setInterval(() => {
+            if (currentPosition <= 0) {
+                // 排队结束
+                clearInterval(queueInterval);
+                queueStatus.style.display = 'none';
+                
+                // 执行回调函数
+                if (callback) callback();
+                return;
+            }
+            
+            // 每次减少1个人
+            currentPosition--;
+            
+            // 更新排队信息
+            queueNumber.textContent = currentPosition;
+            estimatedTime.textContent = Math.ceil(currentPosition * 0.5);
+            
+            // 更新进度条
+            const progress = ((totalPeople - currentPosition) / totalPeople) * 100;
+            queueProgress.style.width = `${progress}%`;
+        }, 1000); // 每秒更新一次
+    }
+
+    // 移除页面加载时的自动排队
+    document.addEventListener('DOMContentLoaded', function() {
+        // 其他初始化代码...
+        
+        // 显示欢迎消息
+        const welcomeMessage = `尊敬的${userInfo.name}${getTimeGreeting()}，您遇到了什么问题呢？让我来为您处理吧~ 😊
+
+<div style="color: white; font-weight: bold; margin-bottom: 10px;">💡 为了给您提供更好的服务，请选择下方业务进行咨询~</div>
+<div style="color: white; text-align: left; line-height: 2.5;">
+    <div style="display: flex; justify-content: flex-start; gap: 15px; margin-bottom: 8px;">
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('comprehensive')">综合业务</span>
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('cityCompanion')">城市玩伴业务</span>
+    </div>
+    <div style="display: flex; justify-content: flex-start; gap: 15px;">
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('ticket')">门票景点业务</span>
+        <span style="cursor: pointer; border: 1px solid rgba(255, 255, 255, 0.8); padding: 8px 15px; border-radius: 4px; min-width: 80px; text-align: center; font-size: 14px;" onclick="handleServiceClick('gameCompanion')">游戏陪玩业务</span>
+    </div>
+</div>`;
+
+        addMessage(welcomeMessage, 'service');
+    });
 }); 
